@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Visualisasi GeoGebra Interaktif: 4 Pembuktian Hiperbola</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; margin: 0; display: flex; height: 100vh; overflow: hidden; }
+        
+        /* Layout Utama */
+        .sidebar { width: 380px; background: white; padding: 20px; box-shadow: 2px 0 10px rgba(0,0,0,0.1); z-index: 10; display: flex; flex-direction: column; overflow-y: auto; }
+        .canvas-container { flex-grow: 1; display: flex; justify-content: center; align-items: center; background-color: #e5e5f7; background-image: radial-gradient(#cbd5e1 1px, transparent 1px); background-size: 20px 20px; position: relative;}
+        
+        /* Tab Navigasi */
+        .tabs { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 20px; }
+        .tab-btn { flex: 1 1 45%; padding: 10px; border: 1px solid #3498db; background: white; color: #3498db; cursor: pointer; border-radius: 4px; font-weight: bold; font-size: 0.85rem; transition: all 0.2s; }
+        .tab-btn.active { background: #3498db; color: white; }
+        .tab-btn:hover { background: #ebf5fb; }
+        .tab-btn.active:hover { background: #2980b9; }
+
+        h2 { margin-top: 0; color: #2c3e50; font-size: 1.1rem; border-bottom: 2px solid #2ecc71; padding-bottom: 8px; }
+        
+        /* Kontrol Input */
+        .control-group { margin-bottom: 15px; }
+        label { font-weight: bold; color: #555; font-size: 0.9rem; display: block; margin-bottom: 5px;}
+        input[type=range] { width: 100%; cursor: pointer; }
+        
+        /* Panel Data */
+        .data-panel { background: #f8f9fa; padding: 15px; border-radius: 6px; margin-top: 10px; border-left: 4px solid #2ecc71; }
+        .data-row { font-size: 1rem; margin: 8px 0; font-family: monospace; color: #333; }
+        .highlight { font-weight: bold; color: #e74c3c; font-size: 1.1rem; }
+        .desc-text { font-size: 0.85rem; color: #7f8c8d; line-height: 1.5; margin-top: 10px;}
+
+        /* Area SVG */
+        svg { background: white; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border-radius: 8px; border: 1px solid #ddd; }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <!-- Menu Tab -->
+        <div class="tabs">
+            <button class="tab-btn active" onclick="setMode(1)" id="btn-tab1">1. Translasi Pusat</button>
+            <button class="tab-btn" onclick="setMode(2)" id="btn-tab2">2. Asimtot</button>
+            <button class="tab-btn" onclick="setMode(3)" id="btn-tab3">3. Jarak Fokus</button>
+            <button class="tab-btn" onclick="setMode(4)" id="btn-tab4">4. Direktriks</button>
+        </div>
+
+        <h2 id="panel-title">1. Translasi Sumbu P(&alpha;, &beta;)</h2>
+
+        <!-- KONTROL UNTUK MODE 1 (TRANSLASI) -->
+        <div id="ctrl-mode1" class="control-group">
+            <label>Geser Pusat X (&alpha;): <span id="val-alpha">3</span></label>
+            <input type="range" id="slider-alpha" min="-5" max="8" step="0.5" value="3">
+            <label style="margin-top:10px;">Geser Pusat Y (&beta;): <span id="val-beta">2</span></label>
+            <input type="range" id="slider-beta" min="-5" max="8" step="0.5" value="2">
+        </div>
+
+        <!-- KONTROL UNTUK MODE 2, 3, 4 (GESER TITIK T) -->
+        <div id="ctrl-modet" class="control-group" style="display:none;">
+            <div class="desc-text" style="margin-bottom: 10px;"><b>Kondisi:</b> Hiperbola berpusat di P(3,2) dengan a=4, b=3, c=5.</div>
+            <label>Geser Titik T pada Kurva:</label>
+            <input type="range" id="slider-t" min="-8" max="8" step="0.1" value="3">
+        </div>
+
+        <!-- PANEL INFORMASI DINAMIS -->
+        <div class="data-panel" id="data-panel">
+            <!-- Konten diinjeksi via JavaScript berdasarkan Mode -->
+        </div>
+
+        <div class="desc-text" id="panel-desc">
+            Kesimpulan akan muncul di sini.
+        </div>
+    </div>
+
+    <div class="canvas-container">
+        <!-- Area Kanvas. 1 Unit Matematika = 25 Pixel -->
+        <!-- Pusat O(0,0) diletakkan di koordinat pixel cx=400, cy=300 -->
+        <svg width="800" height="600" id="mathCanvas" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <pattern id="grid" width="25" height="25" patternUnits="userSpaceOnUse">
+                    <path d="M 25 0 L 0 0 0 25" fill="none" stroke="#f1f2f6" stroke-width="1"/>
+                </pattern>
+                <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                    <polygon points="0 0, 10 3.5, 0 7" fill="#8e44ad" />
+                </marker>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#grid)" />
+
+            <!-- Sumbu Kartesius -->
+            <line x1="400" y1="0" x2="400" y2="600" stroke="#95a5a6" stroke-width="2" />
+            <line x1="0" y1="300" x2="800" y2="300" stroke="#95a5a6" stroke-width="2" />
+            <text x="780" y="295" fill="#7f8c8d" font-size="12">X</text>
+            <text x="405" y="15" fill="#7f8c8d" font-size="12">Y</text>
+
+            <!-- GRUP 1: Translasi -->
+            <g id="svg-mode1">
+                <!-- Kurva Basis O(0,0) -->
+                <path id="hyp-base" fill="none" stroke="#bdc3c7" stroke-width="2" stroke-dasharray="5,5" />
+                <circle cx="400" cy="300" r="4" fill="#7f8c8d" />
+                <text x="385" y="320" fill="#7f8c8d" font-size="12">O(0,0)</text>
+                <!-- Vektor Translasi -->
+                <line id="vec-trans" x1="400" y1="300" x2="400" y2="300" stroke="#8e44ad" stroke-width="2.5" marker-end="url(#arrowhead)" />
+            </g>
+
+            <!-- GRUP UMUM: Kurva Utama -->
+            <path id="hyp-main" fill="none" stroke="#2980b9" stroke-width="2.5" />
+            <circle id="point-p" cx="400" cy="300" r="4" fill="#34495e" />
+            <text id="label-p" x="410" y="295" fill="#34495e" font-size="12">P</text>
+
+            <!-- GRUP 2: Asimtot -->
+            <g id="svg-mode2" style="display:none;">
+                <line id="asymptote1" stroke="#e67e22" stroke-width="1.5" stroke-dasharray="6,6" />
+                <line id="asymptote2" stroke="#e67e22" stroke-width="1.5" stroke-dasharray="6,6" />
+                <line id="dist-asym" stroke="#c0392b" stroke-width="2" /> <!-- Jarak T ke Asimtot -->
+                <circle id="point-a" r="3" fill="#c0392b" /> <!-- Titik proyeksi di asimtot -->
+            </g>
+
+            <!-- GRUP 3 & 4: Fokus, Direktriks, Segmen -->
+            <g id="svg-mode34" style="display:none;">
+                <!-- Fokus -->
+                <circle id="point-f1" r="4" fill="#c0392b" />
+                <text id="label-f1" fill="#c0392b" font-size="12">F₁</text>
+                <circle id="point-f2" r="4" fill="#c0392b" />
+                <text id="label-f2" fill="#c0392b" font-size="12">F₂</text>
+                
+                <!-- Direktriks -->
+                <line id="line-dir" stroke="#2ecc71" stroke-width="2" stroke-dasharray="5,5" />
+                <text id="label-dir" fill="#27ae60" font-size="12">Dir</text>
+
+                <!-- Garis Jarak -->
+                <line id="seg-f1" stroke="#8e44ad" stroke-width="2.5" />
+                <line id="seg-f2" stroke="#3498db" stroke-width="2.5" />
+                <line id="seg-dir" stroke="#e67e22" stroke-width="2.5" />
+                
+                <!-- Titik potong Direktriks -->
+                <circle id="point-i" r="3" fill="#d35400" />
+            </g>
+
+            <!-- TITIK T (Digunakan di Mode 2,3,4) -->
+            <g id="svg-point-t" style="display:none;">
+                <circle id="point-t" r="5" fill="#2c3e50" />
+                <text id="label-t" fill="#2c3e50" font-size="14" font-weight="bold">T</text>
+            </g>
+
+        </svg>
+    </div>
+
+    <script>
+        // -- PENGATURAN SKALA & KOORDINAT --
+        const scale = 25; // 1 unit math = 25 pixel
+        const originX = 400;
+        const originY = 300;
+
+        // Fungsi mapping Koordinat Matematika ke Pixel Canvas
+        function mX(x) { return originX + (x * scale); }
+        function mY(y) { return originY - (y * scale); }
+
+        // Variabel Status
+        let currentMode = 1;
+        
+        // Parameter Hiperbola Konstan (Untuk Mode 2, 3, 4)
+        const a = 4, b = 3, c = 5; // Eksentrisitas e = 5/4 = 1.25
+
+        // Elemen DOM
+        const sAlpha = document.getElementById('slider-alpha');
+        const sBeta = document.getElementById('slider-beta');
+        const sT = document.getElementById('slider-t');
+        const dataPanel = document.getElementById('data-panel');
+        const panelDesc = document.getElementById('panel-desc');
+
+        // Fungsi menggambar kurva hiperbola (mengembalikan path SVG)
+        function getHyperbolaPath(cx, cy, a_val, b_val) {
+            let path = "";
+            // Cabang Kanan
+            for (let t = -12; t <= 12; t += 0.5) {
+                let y = cy + t;
+                let x = cx + a_val * Math.sqrt(1 + Math.pow(t/b_val, 2));
+                path += (t === -12 ? "M " : "L ") + mX(x) + " " + mY(y) + " ";
+            }
+            // Cabang Kiri
+            for (let t = -12; t <= 12; t += 0.5) {
+                let y = cy + t;
+                let x = cx - a_val * Math.sqrt(1 + Math.pow(t/b_val, 2));
+                path += (t === -12 ? "M " : "L ") + mX(x) + " " + mY(y) + " ";
+            }
+            return path;
+        }
+
+        // Fungsi Ganti Tab
+        function setMode(mode) {
+            currentMode = mode;
+            
+            // Reset Button Styles
+            for(let i=1; i<=4; i++) {
+                document.getElementById('btn-tab'+i).classList.remove('active');
+            }
+            document.getElementById('btn-tab'+mode).classList.add('active');
+
+            // Tampilkan/Sembunyikan Panel Kontrol
+            document.getElementById('ctrl-mode1').style.display = (mode === 1) ? 'block' : 'none';
+            document.getElementById('ctrl-modet').style.display = (mode !== 1) ? 'block' : 'none';
+
+            // Tampilkan/Sembunyikan Elemen SVG Group
+            document.getElementById('svg-mode1').style.display = (mode === 1) ? 'block' : 'none';
+            document.getElementById('svg-mode2').style.display = (mode === 2) ? 'block' : 'none';
+            document.getElementById('svg-mode34').style.display = (mode === 3 || mode === 4) ? 'block' : 'none';
+            document.getElementById('svg-point-t').style.display = (mode !== 1) ? 'block' : 'none';
+
+            // Judul Panel
+            const titles = ["", "1. Translasi Sumbu P(α, β)", "2. Asimtot Hiperbola", "3. Selisih Jarak ke Fokus", "4. Direktriks & Eksentrisitas"];
+            document.getElementById('panel-title').innerText = titles[mode];
+
+            updateUI();
+        }
+
+        // Fungsi Utama Update Visual dan Kalkulasi
+        function updateUI() {
+            // --- MODE 1: TRANSLASI ---
+            if (currentMode === 1) {
+                let alpha = parseFloat(sAlpha.value);
+                let beta = parseFloat(sBeta.value);
+                
+                document.getElementById('val-alpha').innerText = alpha;
+                document.getElementById('val-beta').innerText = beta;
+
+                // Gambar Kurva
+                document.getElementById('hyp-base').setAttribute('d', getHyperbolaPath(0, 0, a, b));
+                document.getElementById('hyp-main').setAttribute('d', getHyperbolaPath(alpha, beta, a, b));
+                
+                // Posisikan Titik P & Vektor
+                document.getElementById('point-p').setAttribute('cx', mX(alpha));
+                document.getElementById('point-p').setAttribute('cy', mY(beta));
+                document.getElementById('label-p').setAttribute('x', mX(alpha) + 8);
+                document.getElementById('label-p').setAttribute('y', mY(beta) - 8);
+                document.getElementById('label-p').textContent = `P(${alpha}, ${beta})`;
+
+                let vec = document.getElementById('vec-trans');
+                vec.setAttribute('x2', mX(alpha));
+                vec.setAttribute('y2', mY(beta));
+
+                // Teks HTML
+                let signA = alpha >= 0 ? `- ${alpha}` : `+ ${Math.abs(alpha)}`;
+                let signB = beta >= 0 ? `- ${beta}` : `+ ${Math.abs(beta)}`;
+                dataPanel.innerHTML = `
+                    <div class="data-row">Awal (Pusat 0,0):</div>
+                    <div class="highlight">x²/16 - y²/9 = 1</div>
+                    <div class="data-row" style="margin-top:15px;">Baru (Pusat ${alpha}, ${beta}):</div>
+                    <div class="highlight">(x ${signA})²/16 - (y ${signB})²/9 = 1</div>
+                `;
+                panelDesc.innerHTML = "<b>Kesimpulan:</b> Menggeser pusat sejauh &alpha; pada sumbu X dan &beta; pada sumbu Y mengubah variabel persamaannya secara linier melalui substitusi (x - &alpha;) dan (y - &beta;).";
+            }
+
+            // --- PERHITUNGAN KOORDINAT T UNTUK MODE 2,3,4 ---
+            let t_param = parseFloat(sT.value);
+            let t_y = 2 + t_param; // Pusat Y + param
+            let t_x = 3 + a * Math.sqrt(1 + Math.pow(t_param/b, 2)); // Ambil cabang kanan
+
+            if (currentMode !== 1) {
+                // Gambar Kurva Statis di P(3,2)
+                document.getElementById('hyp-main').setAttribute('d', getHyperbolaPath(3, 2, a, b));
+                document.getElementById('point-p').setAttribute('cx', mX(3));
+                document.getElementById('point-p').setAttribute('cy', mY(2));
+                document.getElementById('label-p').setAttribute('x', mX(3) + 8);
+                document.getElementById('label-p').setAttribute('y', mY(2) - 8);
+                document.getElementById('label-p').textContent = `P(3, 2)`;
+
+                // Posisi Titik T
+                document.getElementById('point-t').setAttribute('cx', mX(t_x));
+                document.getElementById('point-t').setAttribute('cy', mY(t_y));
+                document.getElementById('label-t').setAttribute('x', mX(t_x) + 10);
+                document.getElementById('label-t').setAttribute('y', mY(t_y) - 5);
+            }
+
+            // --- MODE 2: ASIMTOT ---
+            if (currentMode === 2) {
+                // Asimtot: y - 2 = ±(3/4)(x - 3) => 3x - 4y - 1 = 0 dan 3x + 4y - 17 = 0
+                // Gambar garis Asimtot p1(-5) ke p2(11)
+                let a1_y1 = (3/4)*(-5 - 3) + 2; let a1_y2 = (3/4)*(11 - 3) + 2;
+                document.getElementById('asymptote1').setAttribute('x1', mX(-5)); document.getElementById('asymptote1').setAttribute('y1', mY(a1_y1));
+                document.getElementById('asymptote1').setAttribute('x2', mX(11)); document.getElementById('asymptote1').setAttribute('y2', mY(a1_y2));
+
+                let a2_y1 = -(3/4)*(-5 - 3) + 2; let a2_y2 = -(3/4)*(11 - 3) + 2;
+                document.getElementById('asymptote2').setAttribute('x1', mX(-5)); document.getElementById('asymptote2').setAttribute('y1', mY(a2_y1));
+                document.getElementById('asymptote2').setAttribute('x2', mX(11)); document.getElementById('asymptote2').setAttribute('y2', mY(a2_y2));
+
+                // Jarak Titik T ke Asimtot 1 (3x - 4y - 1 = 0)
+                // Persamaan proyeksi T ke garis Ax+By+C=0 (A=3, B=-4, C=-1)
+                let num = 3*t_x - 4*t_y - 1;
+                let proj_X = t_x - 3 * (num / 25);
+                let proj_Y = t_y - (-4) * (num / 25);
+                let dist = Math.abs(num) / 5;
+
+                document.getElementById('point-a').setAttribute('cx', mX(proj_X));
+                document.getElementById('point-a').setAttribute('cy', mY(proj_Y));
+                
+                let segA = document.getElementById('dist-asym');
+                segA.setAttribute('x1', mX(t_x)); segA.setAttribute('y1', mY(t_y));
+                segA.setAttribute('x2', mX(proj_X)); segA.setAttribute('y2', mY(proj_Y));
+
+                dataPanel.innerHTML = `
+                    <div class="data-row">Garis Asimtot 1: 3x - 4y - 1 = 0</div>
+                    <div class="data-row">Titik T: (${t_x.toFixed(2)}, ${t_y.toFixed(2)})</div>
+                    <hr style="border-top:1px dashed #ccc;">
+                    <div class="data-row">Jarak T ke Asimtot:</div>
+                    <div class="highlight" style="font-size: 1.4rem;">${dist.toFixed(4)} unit</div>
+                `;
+                panelDesc.innerHTML = "<b>Kesimpulan:</b> Semakin jauh titik T bergeser ke atas/bawah mendekati tak hingga (∞), nilai jarak antara titik T dan garis asimtot akan semakin mendekati <b>Nol</b>, membuktikan definisi asimtot.";
+            }
+
+            // --- MODE 3 & 4: SETUP FOKUS ---
+            if (currentMode === 3 || currentMode === 4) {
+                // Fokus F1(8,2), F2(-2,2)
+                document.getElementById('point-f1').setAttribute('cx', mX(8)); document.getElementById('point-f1').setAttribute('cy', mY(2));
+                document.getElementById('label-f1').setAttribute('x', mX(8)+5); document.getElementById('label-f1').setAttribute('y', mY(2)+15);
+                
+                let pF2 = document.getElementById('point-f2');
+                let lF2 = document.getElementById('label-f2');
+                let sF2 = document.getElementById('seg-f2');
+
+                // Garis F1 ke T
+                let sF1 = document.getElementById('seg-f1');
+                sF1.setAttribute('x1', mX(t_x)); sF1.setAttribute('y1', mY(t_y));
+                sF1.setAttribute('x2', mX(8)); sF1.setAttribute('y2', mY(2));
+
+                if (currentMode === 3) {
+                    // Tampilkan F2
+                    pF2.style.display = 'block'; lF2.style.display = 'block'; sF2.style.display = 'block';
+                    pF2.setAttribute('cx', mX(-2)); pF2.setAttribute('cy', mY(2));
+                    lF2.setAttribute('x', mX(-2)-18); lF2.setAttribute('y', mY(2)+15);
+                    
+                    sF2.setAttribute('x1', mX(t_x)); sF2.setAttribute('y1', mY(t_y));
+                    sF2.setAttribute('x2', mX(-2)); sF2.setAttribute('y2', mY(2));
+                    
+                    document.getElementById('line-dir').style.display = 'none';
+                    document.getElementById('label-dir').style.display = 'none';
+                    document.getElementById('seg-dir').style.display = 'none';
+                    document.getElementById('point-i').style.display = 'none';
+
+                    // Kalkulasi
+                    let d1 = Math.sqrt(Math.pow(t_x - 8, 2) + Math.pow(t_y - 2, 2));
+                    let d2 = Math.sqrt(Math.pow(t_x + 2, 2) + Math.pow(t_y - 2, 2));
+                    let selisih = Math.abs(d2 - d1);
+
+                    dataPanel.innerHTML = `
+                        <div class="data-row">Jarak T ke F₁ (d₁) = ${d1.toFixed(3)}</div>
+                        <div class="data-row">Jarak T ke F₂ (d₂) = ${d2.toFixed(3)}</div>
+                        <hr style="border-top:1px dashed #ccc;">
+                        <div class="data-row">| d₂ - d₁ | = | ${d2.toFixed(1)} - ${d1.toFixed(1)} |</div>
+                        <div class="highlight">Selisih Konstan = ${Math.round(selisih)} (2a)</div>
+                    `;
+                    panelDesc.innerHTML = "<b>Kesimpulan:</b> Terbukti bahwa di mana pun titik T digeser, selisih jarak absolut dari T ke kedua titik fokus selalu sama dengan panjang sumbu nyata (<b>2a = 8</b>).";
+                }
+
+                if (currentMode === 4) {
+                    // Sembunyikan F2
+                    pF2.style.display = 'none'; lF2.style.display = 'none'; sF2.style.display = 'none';
+                    
+                    // Tampilkan Direktriks (x = 3 + 16/5 = 6.2)
+                    let dirX = 6.2;
+                    let lDir = document.getElementById('line-dir');
+                    lDir.style.display = 'block';
+                    lDir.setAttribute('x1', mX(dirX)); lDir.setAttribute('y1', mY(15));
+                    lDir.setAttribute('x2', mX(dirX)); lDir.setAttribute('y2', mY(-15));
+                    
+                    let lblDir = document.getElementById('label-dir');
+                    lblDir.style.display = 'block';
+                    lblDir.setAttribute('x', mX(dirX)-30); lblDir.setAttribute('y', mY(10));
+                    lblDir.textContent = "x=6.2";
+
+                    // Segmen ke Direktriks
+                    let sDir = document.getElementById('seg-dir');
+                    sDir.style.display = 'block';
+                    sDir.setAttribute('x1', mX(t_x)); sDir.setAttribute('y1', mY(t_y));
+                    sDir.setAttribute('x2', mX(dirX)); sDir.setAttribute('y2', mY(t_y));
+
+                    let pI = document.getElementById('point-i');
+                    pI.style.display = 'block';
+                    pI.setAttribute('cx', mX(dirX)); pI.setAttribute('cy', mY(t_y));
+
+                    // Kalkulasi
+                    let j_fokus = Math.sqrt(Math.pow(t_x - 8, 2) + Math.pow(t_y - 2, 2));
+                    let j_dir = Math.abs(t_x - dirX);
+                    let ratio = j_fokus / j_dir;
+
+                    dataPanel.innerHTML = `
+                        <div class="data-row">Jarak T ke Fokus (j_fokus) = ${j_fokus.toFixed(3)}</div>
+                        <div class="data-row">Jarak T ke Direktriks (j_dir) = ${j_dir.toFixed(3)}</div>
+                        <hr style="border-top:1px dashed #ccc;">
+                        <div class="data-row">Rasio ( j_fokus / j_dir )</div>
+                        <div class="highlight">Eksentrisitas (e) = ${ratio.toFixed(2)}</div>
+                    `;
+                    panelDesc.innerHTML = "<b>Kesimpulan:</b> Terbukti definisi eksentrisitas; perbandingan jarak titik mana pun di kurva terhadap titik fokus dibandingkan dengan jarak terhadap garis direktriks selalu memiliki rasio konstan <b>e > 1</b> (yaitu 5/4 atau 1.25).";
+                }
+            }
+        }
+
+        // Event Listeners untuk interaktivitas
+        sAlpha.addEventListener('input', updateUI);
+        sBeta.addEventListener('input', updateUI);
+        sT.addEventListener('input', updateUI);
+
+        // Inisialisasi awal
+        setMode(1);
+    </script>
+</body>
+</html>
